@@ -1,0 +1,32 @@
+LOAD DATABASE 
+     FROM mysql://dbuser:password@10.6.20.210/dbname
+     INTO postgresql://dbuser:password@10.6.60.25/dbname
+
+WITH include no drop, create no tables, create no indexes, reset sequences,
+     data only, no foreign keys, disable triggers
+
+-- veri tipi dönüşümleri
+CAST type bigint when (= precision 20) to bigserial drop typemod,
+     type date drop not null drop default using zero-dates-to-null,
+     type tinyint to boolean using tinyint-to-boolean,
+     type year to integer,
+     type datetime to timestamp using zero-dates-to-null
+
+SET work_mem to '2048MB', maintenance_work_mem to '4096MB'
+
+BEFORE LOAD DO
+   $$ SET session_replication_role = 'replica'; $$
+
+AFTER LOAD DO
+   $$ SET session_replication_role = 'origin'; $$
+
+-- diğer tabloları dışarıda tut
+EXCLUDING TABLE NAMES MATCHING 
+    ~/test1/,
+    ~/test2/
+
+-- diğer tabloları içeride tut
+INCLUDING ONLY TABLE NAMES MATCHING 
+    ~/test1/,
+	~/test2/
+;
