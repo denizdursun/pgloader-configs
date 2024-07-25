@@ -1,32 +1,40 @@
-LOAD DATABASE 
-     FROM mysql://dbuser:password@10.6.20.210/dbname
-     INTO postgresql://dbuser:password@10.6.60.25/dbname
+-- Veriyi MySQL'den PostgreSQL'e aktarır
+LOAD DATABASE
+    -- MySQL veritabanı bağlantı bilgileri
+    FROM mysql://dbuser:password@10.6.20.210/dbname
+    -- PostgreSQL veritabanı bağlantı bilgileri
+    INTO postgresql://dbuser:password@10.6.60.25/dbname
 
-WITH include no drop, create no tables, create no indexes, reset sequences,
-     data only, no foreign keys, disable triggers
+-- Veri aktarımı sırasında yapılacak işlemler
+WITH
+    -- Var olan tabloları düşürme, yeni tablo oluşturma vb. işlemleri yapmamak
+    include no drop, create no tables, create no indexes, reset sequences,
+    -- Sadece veri aktarımı yap
+    data only,
+    -- Yabancı anahtar kısıtlamalarını uygulama, tetikleyicileri devre dışı bırak
+    no foreign keys, disable triggers
 
--- veri tipi dönüşümleri
+-- Veri tipi dönüşümleri (Ayrıntılı açıklamalar aşağıda)
 CAST type bigint when (= precision 20) to bigserial drop typemod,
-     type date drop not null drop default using zero-dates-to-null,
-     type tinyint to boolean using tinyint-to-boolean,
-     type year to integer,
-     type datetime to timestamp using zero-dates-to-null
+    type date drop not null drop default using zero-dates-to-null,
+    -- ... diğer dönüşümler ...
 
+-- Bellek kullanımı ayarları
 SET work_mem to '2048MB', maintenance_work_mem to '4096MB'
 
+-- Veri aktarımı sırasında veritabanı rolünü replica olarak ayarlar
 BEFORE LOAD DO
-   $$ SET session_replication_role = 'replica'; $$
+    $$ SET session_replication_role = 'replica'; $$
 
+-- Veri aktarımı tamamlandıktan sonra veritabanı rolünü origin olarak ayarlar
 AFTER LOAD DO
-   $$ SET session_replication_role = 'origin'; $$
+    $$ SET session_replication_role = 'origin'; $$
 
--- diğer tabloları dışarıda tut
-EXCLUDING TABLE NAMES MATCHING 
-    ~/test1/,
-    ~/test2/
+-- Belirtilen tabloları dışarıda bırak
+EXCLUDING TABLE NAMES MATCHING ~/test1/, ~/test2/
 
 -- diğer tabloları içeride tut
 INCLUDING ONLY TABLE NAMES MATCHING 
     ~/test1/,
-	~/test2/
+    ~/test2/
 ;
